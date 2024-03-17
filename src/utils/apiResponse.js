@@ -3,6 +3,8 @@ class apiResponse {
     this.statusCode = status;
     this.data = data;
     this.message = message;
-    this.success = statusCode
+    this.success = statusCode;
   }
 }
+
+export { apiResponse };
