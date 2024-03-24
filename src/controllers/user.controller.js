@@ -1,10 +1,23 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { apiError } from "../utils/ApiError.js";
+import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import { apiResponse } from "../utils/ApiResponse.js";
+import { apiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+
+const generateAccessAndRefereshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accesstoken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforSave: false });
+    return { accesstoken, refreshToken };
+  } catch (error) {
+    throw new apiError(500, "Something went wrong  while generating token");
+  }
+};
 
 const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, username, password } = req.body;
@@ -70,4 +83,24 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, createdUser, "User registered Successfully"));
 });
 
-export { registerUser };
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, username, password } = req.body;
+  if (!username || !email || !password) {
+    throw new apiError(
+      400,
+      "Username or Email and Password are required fields"
+    );
+  }
+
+  const user = await User.findOne({ $or: [{ email }, { username }] });
+  if (!user) {
+    throw new apiError(401, "Invalid Credentials");
+  }
+  const isValid = await user.isCorrectPassword(password);
+  if (!isValid) {
+    throw new apiError(401, "Invalid credentials");
+  }
+  await generateAccessAndRefereshToken(user._id)
+});
+
+export { registerUser, loginUser };
