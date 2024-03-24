@@ -100,7 +100,29 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!isValid) {
     throw new apiError(401, "Invalid credentials");
   }
-  await generateAccessAndRefereshToken(user._id)
+  await generateAccessAndRefereshToken(user._id);
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+  res
+    .status(200)
+    .cookie("accesstoken", accesstoken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new apiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accesstoken,
+          refreshToken,
+        },
+        "User Loged in Successfuly"
+      )
+    );
 });
 
 export { registerUser, loginUser };
